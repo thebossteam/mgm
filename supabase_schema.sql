@@ -96,3 +96,23 @@ create index if not exists idx_leads_idempotency on public.leads (idempotency_ke
 -- 6) Realtime
 alter publication supabase_realtime add table public.leads;
 alter publication supabase_realtime add table public.site_config;
+-- 7) Supabase Storage (criar bucket 'site-images' para upload de imagens)
+-- Execute no Dashboard: Storage > New Bucket > Name: site-images > Public: true
+-- Ou via SQL (se a extensão storage estiver disponível):
+insert into storage.buckets (id, name, public)
+values ('site-images', 'site-images', true)
+on conflict (id) do nothing;
+
+-- Política de acesso público para leitura
+drop policy if exists "Public read site-images" on storage.objects;
+create policy "Public read site-images" on storage.objects
+  for select using (bucket_id = 'site-images');
+
+-- Política de upload para anon/authenticated
+drop policy if exists "Auth upload site-images" on storage.objects;
+create policy "Auth upload site-images" on storage.objects
+  for insert to anon, authenticated with check (bucket_id = 'site-images');
+
+drop policy if exists "Auth delete site-images" on storage.objects;
+create policy "Auth delete site-images" on storage.objects
+  for delete to anon, authenticated using (bucket_id = 'site-images');
