@@ -1003,11 +1003,16 @@
       `;
     }
 
-    window.addEventListener('DOMContentLoaded', async () => {
+    async function initSite() {
       initSupabase();
       renderSite();
       await loadRemoteConfig();
-    });
+    }
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', initSite);
+    } else {
+      initSite();
+    }
   </script>
 </body>
 </html>

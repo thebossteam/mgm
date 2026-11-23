@@ -2124,16 +2124,22 @@ return `
       navigator.clipboard.writeText(url).then(() => showToast('URL copiada!', 'success')).catch(() => showToast('Não foi possível copiar.', 'error'));
     }
 
-window.addEventListener('DOMContentLoaded', async () => {
+async function initPanel() {
       initSupabaseClient();
       if (isSupabaseActive) {
         await syncFromSupabase();
+        if (typeof renderApp === 'function') renderApp();
       } else {
         // Em Modo Demo, entra direto no painel (pode sair para ver a tela de login)
         state.isAuthenticated = true;
         renderApp();
       }
-    });
+    }
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', initPanel);
+    } else {
+      initPanel();
+    }
   </script>
 </body>
 </html>
