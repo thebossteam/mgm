@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /areamgm/
+
+Sitemap: https://mgmcontabil.com.br/sitemap.xml
