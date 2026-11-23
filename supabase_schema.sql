@@ -93,9 +93,17 @@ create index if not exists idx_leads_created_at on public.leads (created_at desc
 create index if not exists idx_leads_status on public.leads (status);
 create index if not exists idx_leads_idempotency on public.leads (idempotency_key);
 
--- 6) Realtime
-alter publication supabase_realtime add table public.leads;
-alter publication supabase_realtime add table public.site_config;
+-- 6) Realtime (habilitar via Dashboard se der erro de "already member")
+-- Dashboard > Database > Replication > supabase_realtime > adicionar tabelas leads e site_config
+-- Ou execute manualmente (ignora erro se já estiver habilitado):
+do $$ begin
+  alter publication supabase_realtime add table public.leads;
+exception when duplicate_object then null;
+end $$;
+do $$ begin
+  alter publication supabase_realtime add table public.site_config;
+exception when duplicate_object then null;
+end $$;
 -- 7) Supabase Storage (criar bucket 'site-images' para upload de imagens)
 -- Execute no Dashboard: Storage > New Bucket > Name: site-images > Public: true
 -- Ou via SQL (se a extensão storage estiver disponível):
