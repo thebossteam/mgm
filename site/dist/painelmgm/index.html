@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel Administrativo — MGM Contabilidade</title>
+
+  <!-- Google Fonts: Archivo (600..900) & Manrope (400..800) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS v2 via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Archivo', 'sans-serif'],
+            sans: ['Manrope', 'sans-serif'],
+          },
+          colors: {
+            navy: 'var(--mgm-navy)',
+            'navy-deep': 'var(--mgm-navy-deep)',
+            brand: 'var(--mgm-blue)',
+            'brand-dark': 'var(--mgm-blue-dark)',
+            'brand-light': 'var(--mgm-blue-light)',
+            surface: 'var(--mgm-surface)',
+            canvas: 'var(--mgm-bg)',
+            line: 'var(--mgm-border)',
+            whatsapp: '#1FA855',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    :root {
+      --mgm-navy: #0B1B33;
+      --mgm-navy-deep: #0A1931;
+      --mgm-blue: #1D6FF2;
+      --mgm-blue-dark: #1558CC;
+      --mgm-blue-light: #EAF2FF;
+      --mgm-bg: #F6F7F9;
+      --mgm-surface: #FFFFFF;
+      --mgm-border: #E3E7EE;
+      --mgm-wa: #1FA855;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Manrope', sans-serif;
+      background-color: var(--mgm-bg);
+      color: var(--mgm-navy);
+      -webkit-font-smoothing: antialiased;
+      margin: 0;
+    }
+
+    h1, h2, h3, h4, .font-display { font-family: 'Archivo', sans-serif; }
+
+    .card-shadow {
+      box-shadow: 0 22px 50px -14px rgba(11, 27, 51, 0.12), 0 6px 18px -6px rgba(11, 27, 51, 0.06);
+    }
+
+    .soft-shadow {
+      box-shadow: 0 10px 30px -10px rgba(11, 27, 51, 0.07), 0 2px 8px -2px rgba(11, 27, 51, 0.04);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--mgm-blue);
+    }
+
+    .eyebrow::before {
+      content: "";
+      display: inline-block;
+      width: 30px;
+      height: 3px;
+      border-radius: 999px;
+      background-color: var(--mgm-blue);
+      flex-shrink: 0;
+    }
+
+    .eyebrow-light { color: #8BB8FF; }
+    .eyebrow-light::before { background-color: #60A5FA; }
+
+    .label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 0.45rem;
+    }
+
+    .field {
+      width: 100%;
+      background-color: #FFFFFF;
+      border: 1.5px solid var(--mgm-border);
+      border-radius: 0.875rem;
+      padding: 0.75rem 1rem;
+      font-size: 0.925rem;
+      font-family: 'Manrope', sans-serif;
+      color: var(--mgm-navy);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      outline: none;
+    }
+
+    .field::placeholder { color: #94A3B8; }
+    .field:focus {
+      border-color: var(--mgm-blue);
+      box-shadow: 0 0 0 4px rgba(29, 111, 242, 0.18);
+    }
+
+    .btn-brand {
+      background-color: var(--mgm-blue);
+      color: #FFFFFF;
+      transition: all 0.2s ease;
+    }
+    .btn-brand:hover {
+      background-color: var(--mgm-blue-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-wa {
+      background-color: var(--mgm-wa);
+      color: #FFFFFF;
+      transition: all 0.2s ease;
+    }
+    .btn-wa:hover {
+      background-color: #198F47;
+      transform: translateY(-1px);
+    }
+
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up { animation: fadeSlideUp 0.28s ease forwards; }
+  </style>
+</head>
+<body class="min-h-screen text-navy bg-canvas selection:bg-brand-light selection:text-brand">
+
+  <!-- Container Principal do Painel -->
+  <div id="app"></div>
+
+  <!-- Container de Toasts -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-2.5 max-w-sm w-[calc(100vw-2.5rem)] pointer-events-none"></div>
+
+  <!-- Modal Genérico -->
+  <div id="modal-root" class="fixed inset-0 z-[90] hidden items-center justify-center p-4 bg-[#0B1B33]/60 backdrop-blur-sm"></div>
+
+  <script>
+    /* ==========================================================================
+       CONFIGURAÇÃO SUPABASE (COLE SUAS CHAVES AQUI OU USE O BOTÃO NO CABEÇALHO)
+       ========================================================================== */
+    const SUPABASE_URL = 'https://yngzwpkxacpwualpqomj.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_FTZVuxI513X8vwz4k9LKLA_01Gptt7o';
+
+    // Link para o site público (site publico em /tml)
+    const PUBLIC_SITE_URL = 'index.html';
+
+    const STORAGE_KEYS = {
+      LEADS: 'mgm_contabilidade_leads_v2',
+      CONFIG: 'mgm_contabilidade_site_config_v2',
+      SB_CREDS: 'mgm_supabase_creds_v1',
+    };
+
+    const SUPABASE_SQL_SETUP = `-- 1. Tabela de Leads
+create table if not exists leads (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamptz default now(),
+  nome text not null,
+  email text,
+  whatsapp text not null,
+  perfil text not null,
+  faturamento text,
+  mensagem text,
+  status text default 'Novo',
+  nota_interna text default '',
+  lgpd_aceito boolean default true
+);
+
+-- 2. Tabela de Configurações do Site
+create table if not exists site_config (
+  chave text primary key,
+  conteudo jsonb not null,
+  updated_at timestamptz default now()
+);
+
+-- 3. Ativar Row Level Security (RLS)
+alter table leads enable row level security;
+alter table site_config enable row level security;
+
+-- Políticas de Leads
+create policy "Publico pode enviar lead" on leads
+  for insert to anon with check (true);
+create policy "Admin gerencia leads" on leads
+  for all to authenticated using (true) with check (true);
+
+-- Políticas de Site Config
+create policy "Publico le configuracoes" on site_config
+  for select to anon using (true);
+create policy "Admin edita configuracoes" on site_config
+  for all to authenticated using (true) with check (true);`;
+
+    const DEFAULT_COLORS = {
+      navy: '#0B1B33',
+      blue: '#1D6FF2',
+      blueDark: '#1558CC',
+      blueLight: '#EAF2FF',
+      bg: '#F6F7F9',
+    };
+
+    const DEFAULT_SITE_CONFIG = {
+      identity: {
+        brandName: 'MGM Contabilidade',
+        shortName: 'MGM',
+        tagline: 'Contabilidade Consultiva & Estratégica',
+        crc: 'CRC-SP 2SP041892/O-5',
+      },
+      colors: { ...DEFAULT_COLORS },
+      hero: {
+        eyebrow: 'Contabilidade Consultiva em Guarulhos/SP',
+        title: 'Contabilidade estratégica para quem cuida de vidas e constrói o futuro.',
+        subtitle: 'Atendimento especializado em Guarulhos/SP e 100% digital para médicos, clínicas médicas, construtoras, arquitetos e engenheiros. Menos burocracia e mais previsibilidade tributária.',
+        ctaPrimary: 'Solicitar Diagnóstico',
+        ctaWhatsapp: 'Falar no WhatsApp',
+        trustBadges: [
+          'Diagnóstico Tributário Gratuito',
+          'Proposta Clara por Nicho',
+          'Sem Fidelidade Forçada',
+        ],
+        floatingMetricLabel: 'Economia Tributária Média',
+        floatingMetricValue: 'Até 38%',
+        floatingMetricSub: 'com Fator R e enquadramento estratégico',
+      },
+      metrics: [
+        { id: 'm1', value: '+450', label: 'Empresas e Médicos Atendidos', desc: 'Guarulhos e Grande São Paulo' },
+        { id: 'm2', value: '18 anos', label: 'Experiência Contábil', desc: 'Solidez técnica e visão de negócio' },
+        { id: 'm3', value: 'R$ 14M+', label: 'Economizados em Impostos', desc: 'Via planejamento tributário lícito' },
+        { id: 'm4', value: '98,7%', label: 'Índice de Retenção', desc: 'Relacionamento próximo e consultivo' },
+      ],
+      servicesSection: {
+        eyebrow: 'Soluções & Serviços',
+        title: 'Tudo o que a sua operação precisa, em um só lugar.',
+        subtitle: 'Uma rotina contábil organizada, com relatórios que você entende e um canal direto para decidir rápido.',
+      },
+      services: [
+        {
+          id: 's1',
+          icon: 'chart',
+          tag: 'Mais Procurado',
+          title: 'Planejamento Tributário',
+          desc: 'Simples Nacional (Fator R), Lucro Presumido ou Lucro Real comparados com os números reais do seu nicho.',
+        },
+        {
+          id: 's2',
+          icon: 'heart',
+          tag: 'Área da Saúde',
+          title: 'Contabilidade para Médicos e Clínicas',
+          desc: 'Abertura de PJ médica, plantões, folha, repasse médico, equiparação hospitalar e DRE mensal da clínica.',
+        },
+        {
+          id: 's3',
+          icon: 'building',
+          tag: 'Obras e Projetos',
+          title: 'Construtoras, Arquitetos e Engenheiros',
+          desc: 'Custo por obra, retenções, INSS da obra, emissão de RT/ART, contratos e margem real por empreendimento.',
+        },
+        {
+          id: 's4',
+          icon: 'shield',
+          tag: 'Gestão Mensal',
+          title: 'Contabilidade Gerencial & BPO',
+          desc: 'Contas a pagar, a receber, conciliação bancária e relatórios claros de margem e caixa real.',
+        },
+        {
+          id: 's5',
+          icon: 'users',
+          tag: 'Trabalhista',
+          title: 'Folha de Pagamento e DP',
+          desc: 'Plantões, funcionários de obra, prestadores e pró-labore processados com prazos e encargos em dia.',
+        },
+        {
+          id: 's6',
+          icon: 'doc',
+          tag: 'Regularização',
+          title: 'Abertura, Migração e Certidões',
+          desc: 'Troca de contador sem burocracia, CNPJ, alvarás e certidões negativas para contratos e convênios.',
+        },
+      ],
+      about: {
+        eyebrow: 'Por que a MGM',
+        title: 'Especialista no seu setor, não um balcão genérico.',
+        description: 'A contabilidade deixa de ser um custo invisível e passa a ser uma ferramenta de decisão. Nossa equipe em Guarulhos/SP combina rigor técnico, tecnologia e atendimento próximo.',
+        highlightTitle: 'Diagnóstico Tributário Gratuito',
+        highlightText: 'Analisamos seu enquadramento tributário, folha, obrigações e oportunidades de economia com os seus números reais — sem compromisso.',
+        differentials: [
+          'Especialistas dedicados para clínicas médicas, obras e projetos',
+          'Previsibilidade de impostos antes do vencimento',
+          'Dashboard simples com números essenciais, sem jargão',
+          'Suporte rápido no WhatsApp com contexto da sua empresa',
+          'Transição assistida na troca de contador sem travar sua rotina',
+        ],
+      },
+      form: {
+        eyebrow: 'Diagnóstico Gratuito',
+        title: 'Vamos organizar os números da sua empresa.',
+        subtitle: 'Preencha os dados abaixo e um especialista da MGM Contabilidade entrará em contato com o seu diagnóstico.',
+        buttonText: 'Solicitar Diagnóstico Gratuito',
+        lgpdText: 'Li e aceito a Política de Privacidade. Autorizo a MGM a usar meus dados para retornar o diagnóstico.',
+        profiles: ['Médico', 'Clínica Médica', 'Construtora', 'Arquiteto', 'Engenheiro', 'Outro'],
+        revenues: [
+          'Até R$ 10 mil',
+          'R$ 10 mil a R$ 30 mil',
+          'R$ 30 mil a R$ 100 mil',
+          'R$ 100 mil a R$ 500 mil',
+          'Acima de R$ 500 mil',
+          'Prefiro não informar agora',
+        ],
+      },
+      contact: {
+        whatsappDisplay: '(11) 97424-3409',
+        whatsappNumber: '5511974243409',
+        email: 'contato@mgmcontabil.com.br',
+        address: 'Rua Caracas, SN - Guarulhos/SP • Atendimento Grande SP e 100% Digital',
+        hours: 'Segunda a sexta, das 8h às 18h',
+        instagram: 'https://instagram.com/mgmcontabilidade',
+        linkedin: 'https://linkedin.com/company/mgmcontabilidade',
+        footerBio: 'Contabilidade estratégica para clínicas médicas, médicos, construtoras, arquitetos e engenheiros em Guarulhos e Grande São Paulo.',
+        copyright: '© 2026 MGM Contabilidade (mgmcontabil.com.br). Todos os direitos reservados.',
+      },
+    };
+
+    const DEFAULT_LEADS = [
+      {
+        id: 'lead-1',
+        name: 'Willian Rodrigues',
+        profile: 'Médico',
+        whatsapp: '+5511983845482',
+        email: 'willian.ochefe@gmail.com',
+        revenue: 'Acima de R$ 500 mil',
+        message: 'Me Manda o diagnostico',
+        createdAt: '17/11/2026, 09:28',
+        status: 'Novo',
+        note: '',
+      },
+      {
+        id: 'lead-2',
+        name: 'Dra. Camila Ferreira',
+        profile: 'Clínica Médica',
+        whatsapp: '+5511974128890',
+        email: 'contato@clinicacamila.com.br',
+        revenue: 'R$ 100 mil a R$ 500 mil',
+        message: 'Gostaria de avaliar a equiparação hospitalar para nossa clínica em Guarulhos.',
+        createdAt: '16/11/2026, 16:42',
+        status: 'Em atendimento',
+        note: 'Reunião agendada para quinta-feira às 14h.',
+      },
+      {
+        id: 'lead-3',
+        name: 'Eng. Roberto Mendes',
+        profile: 'Construtora',
+        whatsapp: '+5511992345610',
+        email: 'roberto@mendesconstrutora.com.br',
+        revenue: 'R$ 100 mil a R$ 500 mil',
+        message: 'Precisamos estruturar retenções e INSS de obra.',
+        createdAt: '15/11/2026, 11:15',
+        status: 'Convertido',
+        note: 'Contrato assinado! Migração contábil iniciada.',
+      },
+    ];
+
+    let supabaseClient = null;
+    let isSupabaseActive = false;
+
+    function loadFromStorage(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return structuredClone(fallback);
+        return JSON.parse(raw);
+      } catch {
+        return structuredClone(fallback);
+      }
+    }
+
+    function saveToStorage(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (err) {
+        console.error('Erro ao salvar localStorage:', err);
+      }
+    }
+
+    const state = {
+      isAuthenticated: false,
+      activeTab: 'leads', // 'leads' | 'editor' | 'form'
+      editorSection: 'identity',
+      saveStatus: 'Salvo',
+      authUser: null,
+      leadFilters: {
+        status: 'Todos',
+        profile: 'Todos os perfis',
+        search: '',
+      },
+      leads: loadFromStorage(STORAGE_KEYS.LEADS, DEFAULT_LEADS),
+      config: loadFromStorage(STORAGE_KEYS.CONFIG, DEFAULT_SITE_CONFIG),
+    };
+
+    const WHATSAPP_SVG = `<svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.86 11.86 0 0012.06 0C5.49 0 .14 5.35.14 11.92c0 2.1.55 4.15 1.59 5.96L0 24l6.28-1.65a11.87 11.87 0 005.78 1.47h.01c6.57 0 11.92-5.35 11.92-11.92 0-3.18-1.24-6.18-3.47-8.42zM12.07 21.8h-.01a9.87 9.87 0 01-5.04-1.38l-.36-.21-3.73.98.99-3.64-.24-.37a9.87 9.87 0 01-1.52-5.26c0-5.46 4.44-9.9 9.91-9.9 2.65 0 5.13 1.03 7 2.9a9.84 9.84 0 012.9 7c0 5.46-4.45 9.88-9.9 9.88zm5.43-7.42c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.39-1.48-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.21 5.09 4.5.71.31 1.27.49 1.7.63.72.23 1.37.2 1.88.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35z"/></svg>`;
+
+    /* ==========================================================================
+       SUPABASE — CONEXÃO E SINCRONIZAÇÃO
+       ========================================================================== */
+    function getActiveSupabaseCreds() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.SB_CREDS) || 'null');
+        if (saved && saved.url && saved.key) return saved;
+      } catch {}
+      return { url: SUPABASE_URL, key: SUPABASE_ANON_KEY };
+    }
+
+    function hasRealSupabaseKeys(creds) {
+      return Boolean(
+        creds &&
+        creds.url &&
+        creds.key &&
+        creds.url.startsWith('https://') &&
+        !creds.url.includes('SEU-PROJETO') &&
+        !creds.key.includes('SUA-ANON-KEY') &&
+        creds.key.length > 20
+      );
+    }
+
+    function initSupabaseClient() {
+      const creds = getActiveSupabaseCreds();
+      if (hasRealSupabaseKeys(creds) && window.supabase && typeof window.supabase.createClient === 'function') {
+        try {
+          supabaseClient = window.supabase.createClient(creds.url.trim(), creds.key.trim());
+          isSupabaseActive = true;
+          return true;
+        } catch (err) {
+          console.error('Erro ao iniciar Supabase:', err);
+        }
+      }
+      supabaseClient = null;
+      isSupabaseActive = false;
+      return false;
+    }
+
+    function formatIsoToBR(iso) {
+      try {
+        const d = new Date(iso);
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        const hh = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        return `${dd}/${mm}/${yyyy}, ${hh}:${min}`;
+      } catch {
+        return formatNowBR();
+      }
+    }
+
+    function mapSupabaseLead(row) {
+      return {
+        id: row.id,
+        name: row.nome || '',
+        profile: row.perfil || 'Outro',
+        whatsapp: row.whatsapp || '',
+        email: row.email || '',
+        revenue: row.faturamento || 'A definir',
+        message: row.mensagem || '',
+        createdAt: row.created_at ? formatIsoToBR(row.created_at) : formatNowBR(),
+        status: row.status || 'Novo',
+        note: row.nota_interna || '',
+      };
+    }
+
+    async function syncFromSupabase() {
+      if (!isSupabaseActive || !supabaseClient) return;
+      try {
+        const { data: cfgRows } = await supabaseClient
+          .from('site_config')
+          .select('*')
+          .eq('chave', 'mgm_site');
+        if (cfgRows && cfgRows.length > 0 && cfgRows[0].conteudo) {
+          state.config = { ...structuredClone(DEFAULT_SITE_CONFIG), ...cfgRows[0].conteudo };
+          saveToStorage(STORAGE_KEYS.CONFIG, state.config);
+        }
+
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        state.authUser = sessionData?.session?.user || null;
+        state.isAuthenticated = Boolean(state.authUser);
+
+        if (state.authUser) {
+          const { data: leadRows, error } = await supabaseClient
+            .from('leads')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (!error && Array.isArray(leadRows)) {
+            state.leads = leadRows.map(mapSupabaseLead);
+            saveToStorage(STORAGE_KEYS.LEADS, state.leads);
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao sincronizar com Supabase:', err);
+      } finally {
+        renderApp();
+      }
+    }
+
+    async function saveSiteConfigToBank() {
+      persistAll();
+      if (isSupabaseActive && supabaseClient) {
+        state.saveStatus = 'Salvando...';
+        updateSaveIndicator();
+        const { error } = await supabaseClient.from('site_config').upsert({
+          chave: 'mgm_site',
+          conteudo: state.config,
+          updated_at: new Date().toISOString(),
+        });
+        state.saveStatus = 'Salvo';
+        updateSaveIndicator();
+        if (error) {
+          showToast('Erro ao salvar no Supabase: ' + error.message, 'error');
+        } else {
+          showToast('Configurações publicadas no Supabase (site_config)!');
+        }
+      } else {
+        showToast('Alterações salvas localmente (Modo Demo)!');
+      }
+    }
+
+    function openSupabaseConfigModal() {
+      const creds = getActiveSupabaseCreds();
+      const displayUrl = creds.url.includes('SEU-PROJETO') ? '' : creds.url;
+      const displayKey = creds.key.includes('SUA-ANON-KEY') ? '' : creds.key;
+
+      openModal(`
+        <div class="bg-white rounded-[26px] max-w-2xl w-full p-6 sm:p-8 card-shadow animate-fade-up border border-line max-h-[92vh] overflow-y-auto">
+          <div class="flex items-center justify-between gap-4 pb-4 border-b border-line">
+            <div>
+              <span class="eyebrow">Integração PostgreSQL</span>
+              <h3 class="font-display text-xl font-extrabold text-navy mt-1">Conexão Supabase (mgmcontabil.com.br)</h3>
+            </div>
+            <button type="button" onclick="closeModal()" class="w-9 h-9 rounded-xl border border-line flex items-center justify-center text-slate-500 hover:bg-slate-50">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <form id="supabase-creds-form" class="mt-5 space-y-4">
+            <div>
+              <label class="label">Project URL (Supabase)</label>
+              <input type="url" name="url" value="${escapeHtml(displayUrl)}" placeholder="https://seu-projeto.supabase.co" class="field font-mono text-xs" />
+            </div>
+            <div>
+              <label class="label">Anon Public Key</label>
+              <input type="text" name="key" value="${escapeHtml(displayKey)}" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="field font-mono text-xs" />
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <button type="button" onclick="disconnectSupabase()" class="px-3.5 py-2 rounded-xl border border-line text-xs font-bold text-slate-600 hover:bg-slate-50">
+                Voltar para Modo Demo
+              </button>
+              <button type="submit" class="px-5 py-2.5 rounded-xl btn-brand text-xs sm:text-sm font-bold">
+                Salvar e Conectar Supabase
+              </button>
+            </div>
+          </form>
+
+          <div class="mt-6 pt-5 border-t border-line">
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <label class="label !mb-0">SQL Pronto para o Supabase (SQL Editor)</label>
+              <button type="button" onclick="copySupabaseSQL()" class="px-3 py-1.5 rounded-lg bg-brand-light text-brand text-xs font-extrabold hover:opacity-90">
+                Copiar SQL
+              </button>
+            </div>
+            <textarea id="supabase-sql-box" readonly rows="8" class="field font-mono text-[11px] bg-canvas leading-relaxed">${escapeHtml(SUPABASE_SQL_SETUP)}</textarea>
+          </div>
+        </div>
+      `);
+
+      document.getElementById('supabase-creds-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const url = String(fd.get('url') || '').trim();
+        const key = String(fd.get('key') || '').trim();
+        if (!url || !key) {
+          showToast('Informe a Project URL e a Anon Key.', 'error');
+          return;
+        }
+        localStorage.setItem(STORAGE_KEYS.SB_CREDS, JSON.stringify({ url, key }));
+        initSupabaseClient();
+        closeModal();
+        showToast('Chaves salvas! Sincronizando com Supabase...');
+        await syncFromSupabase();
+      };
+    }
+
+    function disconnectSupabase() {
+      localStorage.removeItem(STORAGE_KEYS.SB_CREDS);
+      initSupabaseClient();
+      state.authUser = null;
+      state.isAuthenticated = true;
+      state.leads = loadFromStorage(STORAGE_KEYS.LEADS, DEFAULT_LEADS);
+      closeModal();
+      renderApp();
+      showToast('Modo Demo (Local) ativado.', 'info');
+    }
+
+    function copySupabaseSQL() {
+      const box = document.getElementById('supabase-sql-box');
+      if (!box) return;
+      box.select();
+      document.execCommand('copy');
+      showToast('SQL copiado para a área de transferência!');
+    }
+
+    /* ==========================================================================
+       UTILITÁRIOS GERAIS, TOASTS E MODAIS
+       ========================================================================== */
+    function formatNowBR() {
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      return `${dd}/${mm}/${yyyy}, ${hh}:${min}`;
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function sanitizePhone(phone) {
+      const digits = String(phone || '').replace(/\D/g, '');
+      if (!digits) return state.config.contact.whatsappNumber || '5511974243409';
+      return digits.startsWith('55') ? digits : `55${digits}`;
+    }
+
+    function darkenHex(hex, percent = 12) {
+      try {
+        const num = parseInt(hex.replace('#', ''), 16);
+        const r = Math.max(0, (num >> 16) - Math.round(2.55 * percent));
+        const g = Math.max(0, ((num >> 8) & 0x00FF) - Math.round(2.55 * percent));
+        const b = Math.max(0, (num & 0x0000FF) - Math.round(2.55 * percent));
+        return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1).toUpperCase();
+      } catch {
+        return '#1558CC';
+      }
+    }
+
+    function applyThemeTokens() {
+      const c = state.config.colors || DEFAULT_COLORS;
+      const root = document.documentElement.style;
+      root.setProperty('--mgm-navy', c.navy || '#0B1B33');
+      root.setProperty('--mgm-navy-deep', darkenHex(c.navy || '#0B1B33', 4));
+      root.setProperty('--mgm-blue', c.blue || '#1D6FF2');
+      root.setProperty('--mgm-blue-dark', darkenHex(c.blue || '#1D6FF2', 12));
+      root.setProperty('--mgm-blue-light', c.blueLight || '#EAF2FF');
+      root.setProperty('--mgm-bg', c.bg || '#F6F7F9');
+    }
+
+    let saveTimer = null;
+    function persistAll() {
+      state.saveStatus = 'Salvando...';
+      updateSaveIndicator();
+      saveToStorage(STORAGE_KEYS.LEADS, state.leads);
+      saveToStorage(STORAGE_KEYS.CONFIG, state.config);
+      applyThemeTokens();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        state.saveStatus = 'Salvo';
+        updateSaveIndicator();
+      }, 240);
+    }
+
+    function updateSaveIndicator() {
+      const el = document.getElementById('save-status-indicator');
+      if (!el) return;
+      el.innerHTML = state.saveStatus === 'Salvando...'
+        ? `<span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span><span>Salvando...</span>`
+        : `<span class="w-2 h-2 rounded-full bg-emerald-400"></span><span>Alterações salvas</span>`;
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const bg = type === 'error'
+        ? 'bg-rose-600 text-white border-rose-400/40'
+        : 'bg-[#0B1B33] text-white border-[#1D6FF2]/40';
+      const icon = type === 'error'
+        ? `<svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>`
+        : `<svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
+
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3.5 rounded-2xl border shadow-xl text-sm font-medium animate-fade-up ${bg}`;
+      toast.innerHTML = `${icon}<span class="leading-snug">${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        toast.style.transition = 'all 0.25s ease';
+        setTimeout(() => toast.remove(), 260);
+      }, 3200);
+    }
+
+    function openModal(htmlContent) {
+      const root = document.getElementById('modal-root');
+      root.innerHTML = htmlContent;
+      root.classList.remove('hidden');
+      root.classList.add('flex');
+      root.onclick = (e) => { if (e.target === root) closeModal(); };
+    }
+
+    function closeModal() {
+      const root = document.getElementById('modal-root');
+      root.classList.add('hidden');
+      root.classList.remove('flex');
+      root.innerHTML = '';
+    }
+
+    function openConfirmModal({ title, message, confirmLabel = 'Confirmar', danger = false, onConfirm }) {
+      openModal(`
+        <div class="bg-white rounded-[26px] max-w-md w-full p-6 sm:p-7 card-shadow animate-fade-up border border-line">
+          <h3 class="font-display text-lg font-extrabold text-navy">${escapeHtml(title)}</h3>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">${escapeHtml(message)}</p>
+          <div class="mt-6 flex items-center justify-end gap-2.5">
+            <button type="button" onclick="closeModal()" class="px-4 py-2.5 rounded-xl border border-line text-sm font-bold text-slate-600 hover:bg-slate-50">Cancelar</button>
+            <button type="button" id="confirm-modal-action" class="px-5 py-2.5 rounded-xl text-sm font-bold text-white ${danger ? 'bg-rose-600 hover:bg-rose-700' : 'btn-brand'}">${escapeHtml(confirmLabel)}</button>
+          </div>
+        </div>
+      `);
+      document.getElementById('confirm-modal-action').onclick = () => {
+        closeModal();
+        if (typeof onConfirm === 'function') onConfirm();
+      };
+    }
+
+    function getStatusBadgeClass(status) {
+      switch (status) {
+        case 'Novo': return 'bg-brand-light text-brand border border-[#1D6FF2]/20';
+        case 'Em atendimento': return 'bg-amber-50 text-amber-700 border border-amber-200';
+        case 'Convertido': return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+        case 'Perdido': return 'bg-rose-50 text-rose-700 border border-rose-200';
+        default: return 'bg-slate-100 text-slate-600 border border-slate-200';
+      }
+    }
+
+    /* ==========================================================================
+       CRUD DE LEADS
+       ========================================================================== */
+    async function addLead({ name, profile, whatsapp, email, revenue, message, status = 'Novo', note = '' }) {
+      const payload = {
+        nome: name.trim(),
+        perfil: profile || 'Médico',
+        whatsapp: whatsapp.trim(),
+        email: email.trim(),
+        faturamento: revenue || 'A definir',
+        mensagem: message.trim() || 'Cadastro via painel administrativo.',
+        status,
+        nota_interna: note,
+        lgpd_aceito: true,
+      };
+
+      if (isSupabaseActive && supabaseClient) {
+        const { data, error } = await supabaseClient.from('leads').insert([payload]).select();
+        if (error) {
+          showToast('Erro ao salvar lead no Supabase: ' + error.message, 'error');
+        } else if (data && data[0]) {
+          const mapped = mapSupabaseLead(data[0]);
+          state.leads.unshift(mapped);
+          saveToStorage(STORAGE_KEYS.LEADS, state.leads);
+          return mapped;
+        }
+      }
+
+      const newLead = {
+        id: 'lead-' + Date.now() + '-' + Math.random().toString(16).slice(2, 6),
+        name: payload.nome,
+        profile: payload.perfil,
+        whatsapp: payload.whatsapp,
+        email: payload.email,
+        revenue: payload.faturamento,
+        message: payload.mensagem,
+        createdAt: formatNowBR(),
+        status,
+        note,
+      };
+      state.leads.unshift(newLead);
+      persistAll();
+      return newLead;
+    }
+
+    async function updateLeadStatus(leadId, newStatus) {
+      const lead = state.leads.find((l) => l.id === leadId);
+      if (!lead) return;
+      lead.status = newStatus;
+      persistAll();
+
+      if (isSupabaseActive && supabaseClient) {
+        const { error } = await supabaseClient
+          .from('leads')
+          .update({ status: newStatus, nota_interna: lead.note || '' })
+          .eq('id', leadId);
+        if (error) {
+          showToast('Erro ao atualizar no Supabase: ' + error.message, 'error');
+          return;
+        }
+      }
+
+      renderApp();
+      showToast(`Status de ${lead.name} atualizado para "${newStatus}".`);
+    }
+
+    async function saveLeadNote(leadId) {
+      const input = document.getElementById(`note-input-${leadId}`);
+      const lead = state.leads.find((l) => l.id === leadId);
+      if (!lead || !input) return;
+      lead.note = input.value.trim();
+      persistAll();
+
+      if (isSupabaseActive && supabaseClient) {
+        const { error } = await supabaseClient
+          .from('leads')
+          .update({ status: lead.status, nota_interna: lead.note })
+          .eq('id', leadId);
+        if (error) {
+          showToast('Erro ao salvar nota no Supabase: ' + error.message, 'error');
+          return;
+        }
+      }
+
+      showToast(`Nota interna de ${lead.name} salva!`);
+    }
+
+    function requestDeleteLead(leadId) {
+      const lead = state.leads.find((l) => l.id === leadId);
+      if (!lead) return;
+      openConfirmModal({
+        title: 'Excluir Lead',
+        message: `Deseja remover "${lead.name}" permanentemente?`,
+        confirmLabel: 'Excluir Lead',
+        danger: true,
+        onConfirm: async () => {
+          if (isSupabaseActive && supabaseClient) {
+            const { error } = await supabaseClient.from('leads').delete().eq('id', leadId);
+            if (error) {
+              showToast('Erro ao excluir no Supabase: ' + error.message, 'error');
+              return;
+            }
+          }
+          state.leads = state.leads.filter((l) => l.id !== leadId);
+          persistAll();
+          renderApp();
+          showToast('Lead removido.', 'info');
+        },
+      });
+    }
+
+    function openNewLeadModal() {
+      const profileOptions = state.config.form.profiles.map((p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+      const revenueOptions = state.config.form.revenues.map((r) => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
+
+      openModal(`
+        <div class="bg-white rounded-[26px] max-w-lg w-full p-6 sm:p-8 card-shadow animate-fade-up border border-line max-h-[92vh] overflow-y-auto">
+          <div class="flex items-center justify-between gap-4 pb-4 border-b border-line">
+            <div>
+              <span class="eyebrow">Novo Cadastro</span>
+              <h3 class="font-display text-xl font-extrabold text-navy mt-1">Adicionar Lead Manualmente</h3>
+            </div>
+            <button type="button" onclick="closeModal()" class="w-9 h-9 rounded-xl border border-line flex items-center justify-center text-slate-500 hover:bg-slate-50">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <form id="modal-new-lead-form" class="mt-5 space-y-4">
+            <div>
+              <label class="label">Nome Completo *</label>
+              <input type="text" name="name" required placeholder="Ex: Dr. Roberto Silva" class="field" />
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="label">Perfil *</label>
+                <select name="profile" class="field">${profileOptions}</select>
+              </div>
+              <div>
+                <label class="label">Faturamento Mensal</label>
+                <select name="revenue" class="field">${revenueOptions}</select>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="label">WhatsApp *</label>
+                <input type="text" name="whatsapp" required placeholder="+55 11 99999-9999" class="field" />
+              </div>
+              <div>
+                <label class="label">E-mail</label>
+                <input type="email" name="email" placeholder="nome@empresa.com.br" class="field" />
+              </div>
+            </div>
+            <div>
+              <label class="label">Mensagem / Necessidade</label>
+              <textarea name="message" rows="3" placeholder="Descreva o interesse do lead..." class="field"></textarea>
+            </div>
+            <div class="pt-2 flex items-center justify-end gap-2.5">
+              <button type="button" onclick="closeModal()" class="px-4 py-2.5 rounded-xl border border-line text-sm font-bold text-slate-600 hover:bg-slate-50">Cancelar</button>
+              <button type="submit" class="px-5 py-2.5 rounded-xl text-sm font-bold btn-brand">Cadastrar Lead</button>
+            </div>
+          </form>
+        </div>
+      `);
+
+      document.getElementById('modal-new-lead-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        await addLead({
+          name: fd.get('name'),
+          profile: fd.get('profile'),
+          whatsapp: fd.get('whatsapp'),
+          email: fd.get('email'),
+          revenue: fd.get('revenue'),
+          message: fd.get('message'),
+        });
+        closeModal();
+        renderApp();
+        showToast('Novo lead adicionado ao painel!');
+      };
+    }
+
+    function exportLeadsCSV() {
+      if (!state.leads.length) {
+        showToast('Não há leads para exportar.', 'info');
+        return;
+      }
+      const headers = ['ID', 'Nome', 'Perfil', 'WhatsApp', 'E-mail', 'Faturamento', 'Mensagem', 'Data', 'Status', 'Nota Interna'];
+      const escapeCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+      const rows = state.leads.map((l) => [
+        l.id, l.name, l.profile, l.whatsapp, l.email, l.revenue, l.message, l.createdAt, l.status, l.note || ''
+      ].map(escapeCsv).join(';'));
+
+      const csvContent = '\uFEFF' + [headers.map(escapeCsv).join(';'), ...rows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mgm-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Arquivo CSV exportado com sucesso!');
+    }
+
+    /* ==========================================================================
+       AUTENTICAÇÃO
+       ========================================================================== */
+    function renderLoginView() {
+      const brand = state.config.identity;
+      return `
+        <div class="min-h-screen flex flex-col lg:flex-row bg-canvas">
+          <div class="lg:w-5/12 bg-navy text-white p-8 sm:p-12 lg:p-16 flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-brand/20 blur-3xl pointer-events-none"></div>
+            <div class="relative z-10">
+              <div class="inline-flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-brand flex items-center justify-center shadow-lg">
+                  <span class="font-display font-black text-white text-lg">${escapeHtml(brand.shortName)}</span>
+                </div>
+                <div>
+                  <div class="font-display font-extrabold text-lg leading-none">${escapeHtml(brand.brandName)}</div>
+                  <div class="text-xs text-blue-300 mt-1">${escapeHtml(brand.crc)}</div>
+                </div>
+              </div>
+              <div class="mt-14">
+                <span class="eyebrow eyebrow-light">ÁREA DA MGM</span>
+                <h1 class="font-display text-3xl sm:text-4xl font-extrabold mt-4 leading-tight">
+                  Painel Administrativo & CRM de Leads.
+                </h1>
+                <p class="mt-4 text-slate-300 text-sm sm:text-base leading-relaxed">
+                  Gerencie oportunidades recebidas pelo site e atualize textos, cores e serviços em tempo real.
+                </p>
+              </div>
+            </div>
+            <div class="relative z-10 mt-12 pt-6 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+              <span>Ambiente Seguro • LGPD</span>
+              <a href="${PUBLIC_SITE_URL}" class="text-blue-300 hover:text-white font-bold transition">
+                Voltar ao Site &rarr;
+              </a>
+            </div>
+          </div>
+
+          <div class="flex-1 flex items-center justify-center p-6 sm:p-12">
+            <div class="w-full max-w-md bg-white rounded-[28px] p-8 sm:p-10 card-shadow border border-line animate-fade-up">
+              <span class="eyebrow">Acesso Restrito</span>
+              <h2 class="font-display text-2xl sm:text-3xl font-extrabold text-navy mt-2">Entrar no Painel</h2>
+              <p class="text-sm text-slate-500 mt-1.5">Faça login com sua conta de administrador do Supabase ou entre em Modo Demo.</p>
+
+              ${!isSupabaseActive ? `
+                <button type="button" onclick="quickLogin()" class="mt-6 w-full py-3.5 px-5 rounded-2xl btn-brand font-bold text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-[#1D6FF2]/25">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                  <span>Entrar em Modo Demo (Local)</span>
+                </button>
+                <div class="relative my-6 flex items-center justify-center">
+                  <div class="w-full border-t border-line"></div>
+                  <span class="bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-400">ou login padrão</span>
+                  <div class="w-full border-t border-line"></div>
+                </div>
+              ` : `
+                <div class="mt-5 mb-4 px-3.5 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span>Supabase Conectado — Entre com seu usuário admin</span>
+                </div>
+              `}
+
+              <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                <div>
+                  <label class="label">E-mail Corporativo</label>
+                  <input type="email" name="email" value="admin@mgmcontabil.com.br" required class="field" />
+                </div>
+                <div>
+                  <label class="label">Senha</label>
+                  <input type="password" name="password" placeholder="••••••••••••" required class="field" />
+                </div>
+                <button type="submit" class="w-full py-3 rounded-xl bg-navy text-white font-bold text-sm hover:opacity-95 transition">
+                  Acessar Painel Administrativo
+                </button>
+              </form>
+              <button type="button" onclick="openSupabaseConfigModal()" class="mt-4 w-full text-center text-xs font-bold text-brand hover:underline">
+                Configurar conexão Supabase
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function quickLogin() {
+      state.isAuthenticated = true;
+      renderApp();
+      showToast('Bem-vindo ao Painel Administrativo MGM (Modo Demo)!');
+    }
+
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      if (isSupabaseActive && supabaseClient) {
+        const fd = new FormData(e.target);
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email: String(fd.get('email') || '').trim(),
+          password: String(fd.get('password') || ''),
+        });
+        if (error) {
+          showToast('Erro no login Supabase: ' + error.message, 'error');
+          return;
+        }
+        state.authUser = data.user;
+        state.isAuthenticated = true;
+        await syncFromSupabase();
+        showToast('Login realizado via Supabase Auth!');
+      } else {
+        quickLogin();
+      }
+    }
+
+    async function handleLogout() {
+      if (isSupabaseActive && supabaseClient) {
+        await supabaseClient.auth.signOut();
+        state.authUser = null;
+      }
+      state.isAuthenticated = false;
+      renderApp();
+      showToast('Sessão encerrada.', 'info');
+    }
+
+    /* ==========================================================================
+       PAINEL PRINCIPAL E ABAS
+       ========================================================================== */
+    function switchTab(tab) {
+      state.activeTab = tab;
+      renderApp();
+    }
+
+    function renderAdminView() {
+      const novoCount = state.leads.filter((l) => l.status === 'Novo').length;
+      const tabs = [
+        { id: 'leads', label: 'Gerenciar Leads', badge: state.leads.length },
+        { id: 'editor', label: 'Editor do Site' },
+        { id: 'form', label: 'Formulário de Contato' },
+      ];
+
+      let content = '';
+      if (state.activeTab === 'leads') content = renderLeadsTab();
+      else if (state.activeTab === 'editor') content = renderEditorTab();
+      else content = renderFormConfigTab();
+
+      return `
+        <div class="min-h-screen flex flex-col bg-canvas">
+          <header class="bg-navy text-white border-b border-white/10 sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div class="flex items-center gap-3.5">
+                <div class="w-11 h-11 rounded-2xl bg-brand flex items-center justify-center shrink-0 shadow-lg shadow-[#1D6FF2]/30">
+                  <span class="font-display font-black text-white text-base">${escapeHtml(state.config.identity.shortName)}</span>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#7BB1FF]">ÁREA DA MGM</span>
+                    ${novoCount > 0 ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-brand text-white">${novoCount} novo${novoCount > 1 ? 's' : ''}</span>` : ''}
+                  </div>
+                  <h1 class="font-display text-lg sm:text-xl font-extrabold tracking-tight text-white leading-snug">
+                    Painel Administrativo
+                  </h1>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2.5">
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border ${isSupabaseActive ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30' : 'bg-amber-500/15 text-amber-200 border-amber-400/30'}">
+                  <span class="w-2 h-2 rounded-full ${isSupabaseActive ? 'bg-emerald-400' : 'bg-amber-400'}"></span>
+                  <span>${isSupabaseActive ? 'Supabase Conectado' : 'Modo Demo'}</span>
+                </div>
+
+                <div id="save-status-indicator" class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold text-slate-200">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span>Alterações salvas</span>
+                </div>
+
+                <button type="button" onclick="openSupabaseConfigModal()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-xs sm:text-sm font-bold text-white transition">
+                  <span>Conexão Supabase</span>
+                </button>
+
+                <a href="${PUBLIC_SITE_URL}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl btn-brand text-xs sm:text-sm font-bold shadow-md shadow-[#1D6FF2]/25">
+                  <span>Ver Site ao Vivo</span>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                </a>
+
+                <button type="button" onclick="handleLogout()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-xs sm:text-sm font-bold text-slate-200 transition">
+                  <span>Sair</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="bg-[#0A1931]/60 border-t border-white/10">
+              <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1.5 overflow-x-auto py-2">
+                ${tabs.map((t) => {
+                  const active = state.activeTab === t.id;
+                  return `
+                    <button type="button" onclick="switchTab('${t.id}')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition ${
+                      active ? 'bg-white text-navy shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/10'
+                    }">
+                      <span>${t.label}</span>
+                      ${t.badge !== undefined ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-extrabold ${active ? 'bg-brand-light text-brand' : 'bg-white/15 text-white'}">${t.badge}</span>` : ''}
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </header>
+
+          <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            ${content}
+          </main>
+        </div>
+      `;
+    }
+
+    /* ==========================================================================
+       ABA 1: GERENCIAR LEADS
+       ========================================================================== */
+    function renderLeadsTab() {
+      const statuses = ['Todos', 'Novo', 'Em atendimento', 'Convertido', 'Perdido'];
+      const total = state.leads.length;
+      const novos = state.leads.filter((l) => l.status === 'Novo').length;
+      const emAtendimento = state.leads.filter((l) => l.status === 'Em atendimento').length;
+      const convertidos = state.leads.filter((l) => l.status === 'Convertido').length;
+      const taxa = total > 0 ? Math.round((convertidos / total) * 100) : 0;
+
+      const countByStatus = (st) => (st === 'Todos' ? total : state.leads.filter((l) => l.status === st).length);
+
+      const filteredLeads = state.leads.filter((lead) => {
+        if (state.leadFilters.status !== 'Todos' && lead.status !== state.leadFilters.status) return false;
+        if (state.leadFilters.profile !== 'Todos os perfis' && lead.profile !== state.leadFilters.profile) return false;
+        if (state.leadFilters.search.trim()) {
+          const q = state.leadFilters.search.toLowerCase();
+          const text = `${lead.name} ${lead.whatsapp} ${lead.email} ${lead.message} ${lead.profile} ${lead.revenue} ${lead.note || ''}`.toLowerCase();
+          if (!text.includes(q)) return false;
+        }
+        return true;
+      });
+
+      const profilesFilter = ['Todos os perfis', ...state.config.form.profiles];
+
+      return `
+        <div class="space-y-6 animate-fade-up">
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+            <div class="bg-white rounded-[22px] p-4 sm:p-5 border border-line soft-shadow">
+              <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total de Leads</div>
+              <div class="mt-1.5 font-display text-2xl sm:text-3xl font-black text-navy">${total}</div>
+            </div>
+            <div class="bg-white rounded-[22px] p-4 sm:p-5 border border-line soft-shadow">
+              <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Novos</div>
+              <div class="mt-1.5 font-display text-2xl sm:text-3xl font-black text-brand">${novos}</div>
+            </div>
+            <div class="bg-white rounded-[22px] p-4 sm:p-5 border border-line soft-shadow">
+              <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Em Atendimento</div>
+              <div class="mt-1.5 font-display text-2xl sm:text-3xl font-black text-amber-600">${emAtendimento}</div>
+            </div>
+            <div class="bg-white rounded-[22px] p-4 sm:p-5 border border-line soft-shadow">
+              <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Conversão</div>
+              <div class="mt-1.5 font-display text-2xl sm:text-3xl font-black text-emerald-600">${taxa}%</div>
+            </div>
+          </div>
+
+          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-2">
+              ${statuses.map((st) => {
+                const active = state.leadFilters.status === st;
+                return `
+                  <button type="button" onclick="setLeadStatusFilter('${st}')" class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition ${
+                    active ? 'bg-navy text-white shadow-md' : 'bg-white text-slate-600 border border-line hover:text-navy'
+                  }">
+                    <span>${st}</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[11px] font-extrabold ${active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}">${countByStatus(st)}</span>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2.5">
+              <button type="button" onclick="openNewLeadModal()" class="px-4 py-2.5 rounded-xl btn-brand text-xs sm:text-sm font-bold">+ Novo Lead</button>
+              <button type="button" onclick="exportLeadsCSV()" class="px-4 py-2.5 rounded-xl bg-white border border-line text-navy hover:bg-slate-50 text-xs sm:text-sm font-bold">Exportar CSV</button>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-[24px] p-4 sm:p-5 border border-line soft-shadow grid grid-cols-1 md:grid-cols-[260px_1fr] gap-4">
+            <div>
+              <label class="label">PERFIL</label>
+              <select onchange="setLeadProfileFilter(this.value)" class="field">
+                ${profilesFilter.map((p) => `<option value="${escapeHtml(p)}" ${state.leadFilters.profile === p ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="label">BUSCAR</label>
+              <input type="text" id="lead-search-input" value="${escapeHtml(state.leadFilters.search)}" oninput="setLeadSearchFilter(this.value)" placeholder="Nome, WhatsApp, e-mail, mensagem..." class="field" />
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            ${filteredLeads.length === 0 ? `
+              <div class="bg-white rounded-[26px] p-12 text-center border border-line soft-shadow">
+                <h3 class="font-display text-lg font-extrabold text-navy">Nenhum lead encontrado</h3>
+                <p class="text-sm text-slate-500 mt-1">Tente limpar ou ajustar os filtros acima.</p>
+                <button type="button" onclick="clearLeadFilters()" class="mt-4 px-4 py-2 rounded-xl bg-brand-light text-brand text-xs font-bold">Limpar filtros</button>
+              </div>
+            ` : filteredLeads.map((lead) => renderLeadCard(lead)).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderLeadCard(lead) {
+      const waText = encodeURIComponent(`Olá ${lead.name}! Aqui é da ${state.config.identity.brandName}. Recebemos sua solicitação de diagnóstico tributário (${lead.profile}).`);
+      const waLink = `https://wa.me/${sanitizePhone(lead.whatsapp)}?text=${waText}`;
+
+      return `
+        <article class="bg-white rounded-[26px] p-5 sm:p-6 border border-line soft-shadow">
+          <div class="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-line">
+            <div>
+              <h3 class="font-display text-lg sm:text-xl font-extrabold text-navy">${escapeHtml(lead.name)}</h3>
+              <div class="mt-1 text-xs font-semibold text-slate-400">${escapeHtml(lead.createdAt)}</div>
+            </div>
+            <span class="px-3.5 py-1 rounded-full text-xs font-extrabold ${getStatusBadgeClass(lead.status)}">${escapeHtml(lead.status)}</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-4">
+            <div>
+              <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">PERFIL</div>
+              <div class="mt-1 text-sm font-bold text-navy">${escapeHtml(lead.profile)}</div>
+            </div>
+            <div>
+              <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">WHATSAPP</div>
+              <div class="mt-1 text-sm font-bold text-navy break-all">${escapeHtml(lead.whatsapp)}</div>
+            </div>
+            <div>
+              <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">E-MAIL</div>
+              <div class="mt-1 text-sm font-bold text-navy break-all">${escapeHtml(lead.email || '—')}</div>
+            </div>
+            <div>
+              <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">FATURAMENTO</div>
+              <div class="mt-1 text-sm font-bold text-brand">${escapeHtml(lead.revenue)}</div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl bg-canvas border border-line/80 px-4 py-3 text-sm italic text-slate-700">
+            "${escapeHtml(lead.message)}"
+          </div>
+
+          <div class="mt-4 flex flex-col sm:flex-row sm:items-end justify-between gap-3 pt-1">
+            <div class="flex flex-wrap items-end gap-3">
+              <div class="w-48">
+                <label class="label">STATUS</label>
+                <select onchange="updateLeadStatus('${lead.id}', this.value)" class="field !py-2 !text-xs !font-bold">
+                  ${['Novo', 'Em atendimento', 'Convertido', 'Perdido'].map((st) => `<option value="${st}" ${lead.status === st ? 'selected' : ''}>${st}</option>`).join('')}
+                </select>
+              </div>
+              <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl btn-wa text-xs sm:text-sm font-bold">
+                ${WHATSAPP_SVG}
+                <span>Chamar no WhatsApp</span>
+              </a>
+            </div>
+
+            <button type="button" onclick="requestDeleteLead('${lead.id}')" class="px-3.5 py-2.5 rounded-xl border border-rose-200 bg-rose-50/70 text-rose-600 hover:bg-rose-100 text-xs font-bold self-start sm:self-end">
+              Excluir
+            </button>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-line">
+            <label class="label">NOTA INTERNA</label>
+            <div class="flex flex-col sm:flex-row gap-2.5">
+              <input type="text" id="note-input-${lead.id}" value="${escapeHtml(lead.note || '')}" placeholder="Observações do atendimento..." class="field !py-2.5 !text-sm flex-1" />
+              <button type="button" onclick="saveLeadNote('${lead.id}')" class="px-4 py-2.5 rounded-xl bg-navy text-white hover:opacity-95 text-xs sm:text-sm font-bold whitespace-nowrap">
+                Salvar nota
+              </button>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function setLeadStatusFilter(status) { state.leadFilters.status = status; renderApp(); }
+    function setLeadProfileFilter(profile) { state.leadFilters.profile = profile; renderApp(); }
+    function setLeadSearchFilter(val) {
+      state.leadFilters.search = val;
+      const caret = document.getElementById('lead-search-input')?.selectionStart || val.length;
+      renderApp();
+      const input = document.getElementById('lead-search-input');
+      if (input) { input.focus(); input.setSelectionRange(caret, caret); }
+    }
+    function clearLeadFilters() {
+      state.leadFilters = { status: 'Todos', profile: 'Todos os perfis', search: '' };
+      renderApp();
+    }
+
+    /* ==========================================================================
+       ABA 2: EDITOR DO SITE
+       ========================================================================== */
+    function updateConfigPath(path, value, shouldRender = false) {
+      const keys = path.split('.');
+      let target = state.config;
+      for (let i = 0; i < keys.length - 1; i++) target = target[keys[i]];
+      target[keys[keys.length - 1]] = value;
+      persistAll();
+      if (shouldRender) renderApp();
+    }
+
+    function resetPalette() {
+      state.config.colors = { ...DEFAULT_COLORS };
+      persistAll();
+      renderApp();
+      showToast('Paleta padrão restaurada!');
+    }
+
+    function exportConfigJSON() {
+      const blob = new Blob([JSON.stringify(state.config, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mgm-site-config-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Configurações exportadas em JSON!');
+    }
+
+    function triggerImportJSON() {
+      const input = document.getElementById('import-json-input');
+      if (input) input.click();
+    }
+
+    function handleImportJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed.identity || !parsed.hero) throw new Error('JSON inválido');
+          state.config = { ...structuredClone(DEFAULT_SITE_CONFIG), ...parsed };
+          persistAll();
+          renderApp();
+          showToast('Configurações importadas!');
+        } catch {
+          showToast('Arquivo JSON incompatível.', 'error');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function requestRestoreDefaultConfig() {
+      openConfirmModal({
+        title: 'Restaurar Padrão',
+        message: 'Os textos e cores do site voltarão ao padrão da MGM Contabilidade. Os leads permanecem intactos.',
+        confirmLabel: 'Restaurar',
+        danger: true,
+        onConfirm: () => {
+          state.config = structuredClone(DEFAULT_SITE_CONFIG);
+          persistAll();
+          renderApp();
+          showToast('Configurações originais restauradas!', 'info');
+        },
+      });
+    }
+
+    function renderEditorTab() {
+      const sections = [
+        { id: 'identity', label: 'Identidade & Cores' },
+        { id: 'hero', label: 'Hero (Capa)' },
+        { id: 'metrics', label: 'Números & Autoridade' },
+        { id: 'services', label: 'Serviços & Soluções' },
+        { id: 'about', label: 'Sobre & Diferenciais' },
+        { id: 'contact', label: 'Contato & Rodapé' },
+      ];
+
+      return `
+        <div class="space-y-5 animate-fade-up">
+          <div class="bg-white rounded-[24px] p-4 sm:p-5 border border-line soft-shadow flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <span class="eyebrow">CMS Integrado</span>
+              <h2 class="font-display text-xl font-extrabold text-navy mt-1">Editor de Conteúdo do Site (index.html)</h2>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" onclick="saveSiteConfigToBank()" class="px-4 py-2.5 rounded-xl btn-brand text-xs sm:text-sm font-bold">Salvar no Banco</button>
+              <button type="button" onclick="exportConfigJSON()" class="px-3.5 py-2.5 rounded-xl bg-white border border-line text-navy hover:bg-slate-50 text-xs sm:text-sm font-bold">Exportar JSON</button>
+              <button type="button" onclick="triggerImportJSON()" class="px-3.5 py-2.5 rounded-xl bg-white border border-line text-navy hover:bg-slate-50 text-xs sm:text-sm font-bold">Importar JSON</button>
+              <input type="file" id="import-json-input" accept=".json" onchange="handleImportJSON(event)" class="hidden" />
+              <button type="button" onclick="requestRestoreDefaultConfig()" class="px-3.5 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-600 text-xs sm:text-sm font-bold">Restaurar Padrão</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 items-start">
+            <aside class="bg-white rounded-[24px] p-3 border border-line soft-shadow flex lg:flex-col gap-1.5 overflow-x-auto">
+              ${sections.map((sec) => {
+                const active = state.editorSection === sec.id;
+                return `
+                  <button type="button" onclick="setEditorSection('${sec.id}')" class="text-left px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center justify-between gap-2 ${
+                    active ? 'bg-navy text-white shadow-sm' : 'text-slate-600 hover:bg-canvas hover:text-navy'
+                  }">
+                    <span>${sec.label}</span>
+                  </button>
+                `;
+              }).join('')}
+            </aside>
+
+            <section class="bg-white rounded-[26px] p-6 sm:p-8 border border-line soft-shadow">
+              ${renderEditorSectionContent()}
+            </section>
+          </div>
+        </div>
+      `;
+    }
+
+    function setEditorSection(sec) { state.editorSection = sec; renderApp(); }
+
+    function renderEditorSectionContent() {
+      const cfg = state.config;
+
+      if (state.editorSection === 'identity') {
+        return `
+          <div class="space-y-6">
+            <h3 class="font-display text-xl font-extrabold text-navy">Identidade da Marca & Cores</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><label class="label">Nome da Marca</label><input type="text" value="${escapeHtml(cfg.identity.brandName)}" oninput="updateConfigPath('identity.brandName', this.value)" class="field" /></div>
+              <div><label class="label">Sigla do Logo</label><input type="text" maxlength="4" value="${escapeHtml(cfg.identity.shortName)}" oninput="updateConfigPath('identity.shortName', this.value)" class="field" /></div>
+              <div><label class="label">Tagline</label><input type="text" value="${escapeHtml(cfg.identity.tagline)}" oninput="updateConfigPath('identity.tagline', this.value)" class="field" /></div>
+              <div><label class="label">CRC</label><input type="text" value="${escapeHtml(cfg.identity.crc)}" oninput="updateConfigPath('identity.crc', this.value)" class="field" /></div>
+            </div>
+            <div class="pt-4 border-t border-line">
+              <div class="flex items-center justify-between mb-4">
+                <h4 class="font-display text-base font-extrabold text-navy">Paleta de Cores</h4>
+                <button type="button" onclick="resetPalette()" class="px-3.5 py-2 rounded-xl bg-brand-light text-brand text-xs font-extrabold">Restaurar Padrão</button>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                ${[
+                  { key: 'navy', label: 'Navy', def: '#0B1B33' },
+                  { key: 'blue', label: 'Azul Principal', def: '#1D6FF2' },
+                  { key: 'blueLight', label: 'Azul Claro', def: '#EAF2FF' },
+                  { key: 'bg', label: 'Fundo', def: '#F6F7F9' },
+                ].map((item) => `
+                  <div class="p-3.5 rounded-2xl border border-line bg-canvas/60">
+                    <label class="label">${item.label}</label>
+                    <div class="flex items-center gap-2 mt-1">
+                      <input type="color" value="${escapeHtml(cfg.colors[item.key] || item.def)}" oninput="updateConfigPath('colors.${item.key}', this.value); this.nextElementSibling.value = this.value.toUpperCase();" class="w-10 h-10 rounded-xl border border-line cursor-pointer bg-white p-0.5" />
+                      <input type="text" value="${escapeHtml((cfg.colors[item.key] || item.def).toUpperCase())}" onchange="updateConfigPath('colors.${item.key}', this.value, true)" class="field !py-2 !text-xs font-mono font-bold uppercase" />
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (state.editorSection === 'hero') {
+        return `
+          <div class="space-y-4">
+            <h3 class="font-display text-xl font-extrabold text-navy">Hero (Capa Principal)</h3>
+            <div><label class="label">Eyebrow</label><input type="text" value="${escapeHtml(cfg.hero.eyebrow)}" oninput="updateConfigPath('hero.eyebrow', this.value)" class="field" /></div>
+            <div><label class="label">Título Display</label><textarea rows="2" oninput="updateConfigPath('hero.title', this.value)" class="field">${escapeHtml(cfg.hero.title)}</textarea></div>
+            <div><label class="label">Subtítulo</label><textarea rows="3" oninput="updateConfigPath('hero.subtitle', this.value)" class="field">${escapeHtml(cfg.hero.subtitle)}</textarea></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><label class="label">Botão Principal</label><input type="text" value="${escapeHtml(cfg.hero.ctaPrimary)}" oninput="updateConfigPath('hero.ctaPrimary', this.value)" class="field" /></div>
+              <div><label class="label">Botão WhatsApp</label><input type="text" value="${escapeHtml(cfg.hero.ctaWhatsapp)}" oninput="updateConfigPath('hero.ctaWhatsapp', this.value)" class="field" /></div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (state.editorSection === 'metrics') {
+        return `
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-display text-xl font-extrabold text-navy">Números & Autoridade</h3>
+              <button type="button" onclick="addMetricItem()" class="px-4 py-2 rounded-xl btn-brand text-xs font-bold">+ Adicionar</button>
+            </div>
+            ${cfg.metrics.map((m, idx) => `
+              <div class="p-4 rounded-2xl border border-line bg-canvas/50 grid grid-cols-1 sm:grid-cols-[120px_1fr_1fr_auto] gap-3 items-end">
+                <div><label class="label">Valor</label><input type="text" value="${escapeHtml(m.value)}" oninput="updateArrayItem('metrics', ${idx}, 'value', this.value)" class="field !py-2 font-bold" /></div>
+                <div><label class="label">Título</label><input type="text" value="${escapeHtml(m.label)}" oninput="updateArrayItem('metrics', ${idx}, 'label', this.value)" class="field !py-2" /></div>
+                <div><label class="label">Descrição</label><input type="text" value="${escapeHtml(m.desc)}" oninput="updateArrayItem('metrics', ${idx}, 'desc', this.value)" class="field !py-2" /></div>
+                <button type="button" onclick="removeArrayItem('metrics', ${idx})" class="px-3 py-2.5 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold">Remover</button>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      if (state.editorSection === 'services') {
+        return `
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-display text-xl font-extrabold text-navy">Serviços & Soluções</h3>
+              <button type="button" onclick="addServiceItem()" class="px-4 py-2 rounded-xl btn-brand text-xs font-bold">+ Novo Serviço</button>
+            </div>
+            ${cfg.services.map((s, idx) => `
+              <div class="p-4 rounded-2xl border border-line bg-canvas/50 space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-[1fr_150px_auto] gap-3 items-end">
+                  <div><label class="label">Nome</label><input type="text" value="${escapeHtml(s.title)}" oninput="updateArrayItem('services', ${idx}, 'title', this.value)" class="field !py-2 font-bold" /></div>
+                  <div><label class="label">Tag</label><input type="text" value="${escapeHtml(s.tag)}" oninput="updateArrayItem('services', ${idx}, 'tag', this.value)" class="field !py-2" /></div>
+                  <button type="button" onclick="removeArrayItem('services', ${idx})" class="px-3 py-2.5 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold">Remover</button>
+                </div>
+                <div><label class="label">Descrição</label><textarea rows="2" oninput="updateArrayItem('services', ${idx}, 'desc', this.value)" class="field !py-2">${escapeHtml(s.desc)}</textarea></div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      if (state.editorSection === 'about') {
+        return `
+          <div class="space-y-4">
+            <h3 class="font-display text-xl font-extrabold text-navy">Sobre & Diferenciais</h3>
+            <div><label class="label">Título</label><input type="text" value="${escapeHtml(cfg.about.title)}" oninput="updateConfigPath('about.title', this.value)" class="field" /></div>
+            <div><label class="label">Descrição</label><textarea rows="3" oninput="updateConfigPath('about.description', this.value)" class="field">${escapeHtml(cfg.about.description)}</textarea></div>
+            <div class="pt-3 border-t border-line">
+              <div class="flex items-center justify-between mb-3">
+                <label class="label !mb-0">Diferenciais</label>
+                <button type="button" onclick="addDifferentialItem()" class="px-3.5 py-1.5 rounded-xl btn-brand text-xs font-bold">+ Adicionar</button>
+              </div>
+              <div class="space-y-2">
+                ${cfg.about.differentials.map((item, idx) => `
+                  <div class="flex items-center gap-2">
+                    <input type="text" value="${escapeHtml(item)}" oninput="updateDifferentialItem(${idx}, this.value)" class="field !py-2 flex-1" />
+                    <button type="button" onclick="removeDifferentialItem(${idx})" class="px-3 py-2 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold">Remover</button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="space-y-4">
+          <h3 class="font-display text-xl font-extrabold text-navy">Contato & Rodapé</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><label class="label">WhatsApp (Exibição)</label><input type="text" value="${escapeHtml(cfg.contact.whatsappDisplay)}" oninput="updateConfigPath('contact.whatsappDisplay', this.value)" class="field" /></div>
+            <div><label class="label">WhatsApp (Números com 55)</label><input type="text" value="${escapeHtml(cfg.contact.whatsappNumber)}" oninput="updateConfigPath('contact.whatsappNumber', this.value)" class="field" /></div>
+            <div><label class="label">E-mail</label><input type="email" value="${escapeHtml(cfg.contact.email)}" oninput="updateConfigPath('contact.email', this.value)" class="field" /></div>
+            <div><label class="label">Horário</label><input type="text" value="${escapeHtml(cfg.contact.hours)}" oninput="updateConfigPath('contact.hours', this.value)" class="field" /></div>
+            <div class="sm:col-span-2"><label class="label">Endereço</label><input type="text" value="${escapeHtml(cfg.contact.address)}" oninput="updateConfigPath('contact.address', this.value)" class="field" /></div>
+            <div class="sm:col-span-2"><label class="label">Copyright</label><input type="text" value="${escapeHtml(cfg.contact.copyright)}" oninput="updateConfigPath('contact.copyright', this.value)" class="field" /></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateArrayItem(listKey, index, field, value) { state.config[listKey][index][field] = value; persistAll(); }
+    function removeArrayItem(listKey, index) { state.config[listKey].splice(index, 1); persistAll(); renderApp(); }
+    function addMetricItem() { state.config.metrics.push({ id: 'm-' + Date.now(), value: '+100', label: 'Novo Indicador', desc: 'Descrição' }); persistAll(); renderApp(); }
+    function addServiceItem() { state.config.services.push({ id: 's-' + Date.now(), icon: 'chart', tag: 'Destaque', title: 'Novo Serviço', desc: 'Descrição do serviço.' }); persistAll(); renderApp(); }
+    function addDifferentialItem() { state.config.about.differentials.push('Novo diferencial da MGM'); persistAll(); renderApp(); }
+    function updateDifferentialItem(idx, value) { state.config.about.differentials[idx] = value; persistAll(); }
+    function removeDifferentialItem(idx) { state.config.about.differentials.splice(idx, 1); persistAll(); renderApp(); }
+
+    /* ==========================================================================
+       ABA 3: CONFIGURADOR DO FORMULÁRIO DE CONTATO
+       ========================================================================== */
+    function renderFormConfigTab() {
+      const f = state.config.form;
+      return `
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-up items-start">
+          <div class="bg-white rounded-[26px] p-6 sm:p-7 border border-line soft-shadow space-y-5">
+            <div class="flex items-center justify-between gap-2">
+              <div>
+                <span class="eyebrow">Formulário Público</span>
+                <h2 class="font-display text-xl font-extrabold text-navy mt-1">Perfis e Faixas de Faturamento</h2>
+              </div>
+              <button type="button" onclick="saveSiteConfigToBank()" class="px-4 py-2 rounded-xl btn-brand text-xs font-bold">Salvar no Banco</button>
+            </div>
+
+            <div><label class="label">Título</label><input type="text" value="${escapeHtml(f.title)}" oninput="updateConfigPath('form.title', this.value)" class="field" /></div>
+            <div><label class="label">Subtítulo</label><textarea rows="2" oninput="updateConfigPath('form.subtitle', this.value)" class="field">${escapeHtml(f.subtitle)}</textarea></div>
+            <div><label class="label">Texto do Botão</label><input type="text" value="${escapeHtml(f.buttonText)}" oninput="updateConfigPath('form.buttonText', this.value)" class="field" /></div>
+
+            <div class="pt-3 border-t border-line">
+              <label class="label">Opções de Perfil</label>
+              <div class="flex flex-wrap gap-2 mb-3">
+                ${f.profiles.map((p, i) => `
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-light text-brand text-xs font-bold">
+                    ${escapeHtml(p)}
+                    <button type="button" onclick="removeFormOption('profiles', ${i})" class="hover:text-rose-600 font-black">&times;</button>
+                  </span>
+                `).join('')}
+              </div>
+              <div class="flex gap-2">
+                <input type="text" id="new-profile-input" placeholder="Novo perfil..." class="field !py-2 !text-sm flex-1" />
+                <button type="button" onclick="addFormOption('profiles', 'new-profile-input')" class="px-4 py-2 rounded-xl btn-brand text-xs font-bold">Adicionar</button>
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-line">
+              <label class="label">Faixas de Faturamento</label>
+              <div class="flex flex-wrap gap-2 mb-3">
+                ${f.revenues.map((r, i) => `
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-navy text-xs font-bold">
+                    ${escapeHtml(r)}
+                    <button type="button" onclick="removeFormOption('revenues', ${i})" class="hover:text-rose-600 font-black">&times;</button>
+                  </span>
+                `).join('')}
+              </div>
+              <div class="flex gap-2">
+                <input type="text" id="new-revenue-input" placeholder="Nova faixa..." class="field !py-2 !text-sm flex-1" />
+                <button type="button" onclick="addFormOption('revenues', 'new-revenue-input')" class="px-4 py-2 rounded-xl btn-brand text-xs font-bold">Adicionar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-[28px] p-6 sm:p-8 border border-line card-shadow">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-extrabold mb-3">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              Teste Interativo — Envia direto para Gerenciar Leads
+            </div>
+            <h3 class="font-display text-2xl font-extrabold text-navy">${escapeHtml(f.title)}</h3>
+            <p class="text-sm text-slate-500 mt-1.5">${escapeHtml(f.subtitle)}</p>
+
+            <form onsubmit="handleAdminTestFormSubmit(event)" class="mt-6 space-y-4">
+              <div><label class="label">Nome Completo *</label><input type="text" name="name" required class="field" placeholder="Nome de teste" /></div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div><label class="label">WhatsApp *</label><input type="tel" name="whatsapp" required class="field" placeholder="(11) 99999-9999" /></div>
+                <div><label class="label">E-mail</label><input type="email" name="email" class="field" placeholder="teste@email.com" /></div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="label">Perfil *</label>
+                  <select name="profile" class="field">${f.profiles.map((p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('')}</select>
+                </div>
+                <div>
+                  <label class="label">Faturamento</label>
+                  <select name="revenue" class="field">${f.revenues.map((r) => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('')}</select>
+                </div>
+              </div>
+              <div><label class="label">Mensagem</label><textarea name="message" rows="3" class="field" placeholder="Mensagem de teste..."></textarea></div>
+              <button type="submit" class="w-full py-3.5 px-6 rounded-2xl btn-brand font-display font-bold text-sm">
+                ${escapeHtml(f.buttonText)}
+              </button>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    function addFormOption(listName, inputId) {
+      const input = document.getElementById(inputId);
+      if (!input || !input.value.trim()) return;
+      state.config.form[listName].push(input.value.trim());
+      persistAll();
+      renderApp();
+    }
+
+    function removeFormOption(listName, idx) {
+      if (state.config.form[listName].length <= 1) {
+        showToast('Mantenha pelo menos uma opção ativa.', 'error');
+        return;
+      }
+      state.config.form[listName].splice(idx, 1);
+      persistAll();
+      renderApp();
+    }
+
+    async function handleAdminTestFormSubmit(event) {
+      event.preventDefault();
+      const fd = new FormData(event.target);
+      const lead = await addLead({
+        name: fd.get('name'),
+        whatsapp: fd.get('whatsapp'),
+        email: fd.get('email'),
+        profile: fd.get('profile'),
+        revenue: fd.get('revenue'),
+        message: fd.get('message'),
+      });
+      event.target.reset();
+      renderApp();
+      showToast(`Lead de teste "${lead.name}" registrado em Gerenciar Leads!`);
+    }
+
+    /* ==========================================================================
+       RENDERIZAÇÃO PRINCIPAL
+       ========================================================================== */
+    function renderApp() {
+      applyThemeTokens();
+      const app = document.getElementById('app');
+      if (!app) return;
+      app.innerHTML = state.isAuthenticated ? renderAdminView() : renderLoginView();
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      initSupabaseClient();
+      if (isSupabaseActive) {
+        await syncFromSupabase();
+      } else {
+        // Em Modo Demo, entra direto no painel (pode sair para ver a tela de login)
+        state.isAuthenticated = true;
+        renderApp();
+      }
+    });
+  </script>
+</body>
+</html>
