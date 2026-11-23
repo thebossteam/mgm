@@ -257,6 +257,66 @@
       'Prefer': 'return=representation',
     };
 
+    // Supabase Auth helpers
+    function getAuthHeaders() {
+      const token = state.accessToken || SUPA_KEY;
+      return {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+      };
+    }
+
+    async function supabaseSignIn(email, password) {
+      const r = await fetch(SUPA_URL + '/auth/v1/token?grant_type=password', {
+        method: 'POST',
+        headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error_description || data.msg || 'Falha no login');
+      state.accessToken = data.access_token;
+      state.user = data.user;
+      localStorage.setItem('mgm_access_token', data.access_token);
+      localStorage.setItem('mgm_refresh_token', data.refresh_token || '');
+      return data;
+    }
+
+    async function supabaseSignOut() {
+      try {
+        await fetch(SUPA_URL + '/auth/v1/logout', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+        });
+      } catch (e) { console.error('logout err', e); }
+      state.accessToken = null;
+      state.user = null;
+      localStorage.removeItem('mgm_access_token');
+      localStorage.removeItem('mgm_refresh_token');
+      state.viewMode = 'login';
+      renderApp();
+    }
+
+    async function supabaseRestoreSession() {
+      const token = localStorage.getItem('mgm_access_token');
+      if (!token) return false;
+      try {
+        const r = await fetch(SUPA_URL + '/auth/v1/user', {
+          headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token },
+        });
+        if (!r.ok) throw new Error('invalid session');
+        const user = await r.json();
+        state.accessToken = token;
+        state.user = user;
+        return true;
+      } catch (e) {
+        localStorage.removeItem('mgm_access_token');
+        localStorage.removeItem('mgm_refresh_token');
+        return false;
+      }
+    }
+
     const DEFAULT_COLORS = {
       navy: '#0B1B33',
       blue: '#1D6FF2',
@@ -461,7 +521,7 @@
     // Supabase: carrega leads
     async function loadLeadsFromSupabase() {
       try {
-        const r = await fetch(SUPA_URL + '/rest/v1/leads?select=*', { headers: SUPA_HEADERS });
+        const r = await fetch(SUPA_URL + '/rest/v1/leads?select=*', { headers: getAuthHeaders() });
         if (!r.ok) throw new Error('HTTP ' + r.status);
         const rows = await r.json();
         return rows.map(row => ({
@@ -485,7 +545,7 @@
     // Supabase: carrega config
     async function loadConfigFromSupabase() {
       try {
-        const r = await fetch(SUPA_URL + '/rest/v1/site_config?select=*&key=eq.identity', { headers: SUPA_HEADERS });
+        const r = await fetch(SUPA_URL + '/rest/v1/site_config?select=*&key=eq.identity', { headers: getAuthHeaders() });
         if (!r.ok) throw new Error('HTTP ' + r.status);
         const rows = await r.json();
         if (rows && rows.length) {
@@ -518,11 +578,11 @@
           };
           if (lead.id && String(lead.id).match(/^[0-9a-f-]{36}$/)) {
             await fetch(SUPA_URL + '/rest/v1/leads?id=eq.' + lead.id, {
-              method: 'PATCH', headers: SUPA_HEADERS, body: JSON.stringify(body),
+              method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify(body),
             });
           } else {
             const r = await fetch(SUPA_URL + '/rest/v1/leads', {
-              method: 'POST', headers: SUPA_HEADERS, body: JSON.stringify(body),
+              method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(body),
             });
             const rows = await r.json();
             if (rows && rows[0]) lead.id = rows[0].id;
@@ -538,7 +598,7 @@
       try {
         await fetch(SUPA_URL + '/rest/v1/site_config?on_conflict=key', {
           method: 'POST',
-          headers: { ...SUPA_HEADERS, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+          headers: { ...getAuthHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
           body: JSON.stringify({ key: 'identity', value: config }),
         });
       } catch (err) {
@@ -804,7 +864,7 @@
         danger: true,
         onConfirm: () => {
           if (String(leadId).match(/^[0-9a-f-]{36}$/)) {
-            fetch(SUPA_URL + '/rest/v1/leads?id=eq.' + leadId, { method: 'DELETE', headers: SUPA_HEADERS }).catch(e => console.error('Erro ao excluir lead no Supabase:', e));
+            fetch(SUPA_URL + '/rest/v1/leads?id=eq.' + leadId, { method: 'DELETE', headers: getAuthHeaders() }).catch(e => console.error('Erro ao excluir lead no Supabase:', e));
           }
           state.leads = state.leads.filter((l) => l.id !== leadId);
           persistAll();
@@ -1046,7 +1106,7 @@
               <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
                 <div>
                   <label class="label">E-mail Corporativo</label>
-                  <input type="email" value="admin@mgmcontabilidade.com.br" required class="field" />
+                  <input id="login-email" type="email" value="admin@mgmcontabilidade.com.br" required class="field" />
                 </div>
                 <div>
                   <label class="label">Senha</label>
@@ -1062,15 +1122,27 @@
       `;
     }
 
-    function quickLogin() {
-      state.viewMode = 'admin';
-      renderApp();
-      showToast('Bem-vindo ao Painel Administrativo MGM!');
+    async function quickLogin() {
+      // Tenta login real com as credenciais padrão do formulário
+      const email = (document.getElementById('login-email') || {}).value || 'admin@mgmcontabilidade.com.br';
+      const password = (document.getElementById('login-password') || {}).value || '';
+      if (!email || !password) {
+        showToast('Informe e-mail e senha.', 'error');
+        return;
+      }
+      try {
+        await supabaseSignIn(email, password);
+        state.viewMode = 'admin';
+        renderApp();
+        showToast('Bem-vindo ao Painel Administrativo MGM!');
+      } catch (err) {
+        showToast('Falha no login: ' + (err.message || 'credenciais inválidas'), 'error');
+      }
     }
 
-    function handleLoginSubmit(e) {
+    async function handleLoginSubmit(e) {
       e.preventDefault();
-      quickLogin();
+      await quickLogin();
     }
 
     function switchView(mode) {
@@ -1151,7 +1223,7 @@
                   <span>Ver Site ao Vivo</span>
                 </button>
 
-                <button type="button" onclick="switchView('login')" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-xs sm:text-sm font-bold text-slate-200 transition">
+                <button type="button" onclick="supabaseSignOut()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-xs sm:text-sm font-bold text-slate-200 transition">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                   <span>Sair</span>
                 </button>
@@ -2536,6 +2608,9 @@
 
     // Inicialização: carrega dados do Supabase antes de renderizar
     window.addEventListener('DOMContentLoaded', async () => {
+      const restored = await supabaseRestoreSession();
+      if (restored) state.viewMode = 'admin';
+      else state.viewMode = 'login';
       try {
         const [leads, config] = await Promise.all([loadLeadsFromSupabase(), loadConfigFromSupabase()]);
         state.leads = leads;
