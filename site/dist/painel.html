@@ -247,6 +247,16 @@
       CONFIG: 'mgm_contabilidade_site_config_v1',
     };
 
+    // Supabase (painel admin)
+    const SUPA_URL = 'https://yngzwpkxacpwualpqomj.supabase.co';
+    const SUPA_KEY = 'sb_publishable_FTZVuxI513X8vwz4k9LKLA_01Gptt7o';
+    const SUPA_HEADERS = {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+    };
+
     const DEFAULT_COLORS = {
       navy: '#0B1B33',
       blue: '#1D6FF2',
@@ -448,23 +458,100 @@
     /* ==========================================================================
        GERENCIAMENTO DE ESTADO DA APLICAÇÃO
        ========================================================================== */
-    function loadFromStorage(key, fallback) {
+    // Supabase: carrega leads
+    async function loadLeadsFromSupabase() {
       try {
-        const raw = localStorage.getItem(key);
-        if (!raw) return structuredClone(fallback);
-        return JSON.parse(raw);
+        const r = await fetch(SUPA_URL + '/rest/v1/leads?select=*', { headers: SUPA_HEADERS });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const rows = await r.json();
+        return rows.map(row => ({
+          id: row.id,
+          name: row.name || row.nome || '',
+          profile: row.profile || row.perfil || '',
+          whatsapp: row.whatsapp || '',
+          email: row.email || '',
+          revenue: row.revenue || row.faturamento_mensal || '',
+          message: row.message || row.mensagem || '',
+          createdAt: row.created_at ? new Date(row.created_at).toLocaleString('pt-BR') : (row.createdAt || ''),
+          status: row.status || 'Novo',
+          note: row.note || '',
+        }));
       } catch (err) {
-        console.error('Erro ao carregar localStorage:', err);
-        return structuredClone(fallback);
+        console.error('Erro ao carregar leads do Supabase:', err);
+        return structuredClone(DEFAULT_LEADS);
       }
     }
 
-    function saveToStorage(key, value) {
+    // Supabase: carrega config
+    async function loadConfigFromSupabase() {
       try {
-        localStorage.setItem(key, JSON.stringify(value));
+        const r = await fetch(SUPA_URL + '/rest/v1/site_config?select=*&key=eq.identity', { headers: SUPA_HEADERS });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const rows = await r.json();
+        if (rows && rows.length) {
+          return { ...DEFAULT_SITE_CONFIG, ...rows[0].value };
+        }
+        return structuredClone(DEFAULT_SITE_CONFIG);
       } catch (err) {
-        console.error('Erro ao salvar localStorage:', err);
+        console.error('Erro ao carregar config do Supabase:', err);
+        return structuredClone(DEFAULT_SITE_CONFIG);
       }
+    }
+
+    // Supabase: salva leads (upsert por id)
+    async function saveLeadsToSupabase(leads) {
+      try {
+        for (const lead of leads) {
+          const body = {
+            nome: lead.name,
+            name: lead.name,
+            perfil: lead.profile,
+            profile: lead.profile,
+            whatsapp: lead.whatsapp,
+            email: lead.email,
+            faturamento_mensal: lead.revenue,
+            revenue: lead.revenue,
+            mensagem: lead.message,
+            message: lead.message,
+            status: lead.status,
+            note: lead.note,
+          };
+          if (lead.id && String(lead.id).match(/^[0-9a-f-]{36}$/)) {
+            await fetch(SUPA_URL + '/rest/v1/leads?id=eq.' + lead.id, {
+              method: 'PATCH', headers: SUPA_HEADERS, body: JSON.stringify(body),
+            });
+          } else {
+            const r = await fetch(SUPA_URL + '/rest/v1/leads', {
+              method: 'POST', headers: SUPA_HEADERS, body: JSON.stringify(body),
+            });
+            const rows = await r.json();
+            if (rows && rows[0]) lead.id = rows[0].id;
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao salvar leads no Supabase:', err);
+      }
+    }
+
+    // Supabase: salva config
+    async function saveConfigToSupabase(config) {
+      try {
+        await fetch(SUPA_URL + '/rest/v1/site_config?on_conflict=key', {
+          method: 'POST',
+          headers: { ...SUPA_HEADERS, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify({ key: 'identity', value: config }),
+        });
+      } catch (err) {
+        console.error('Erro ao salvar config no Supabase:', err);
+      }
+    }
+
+    // compatibilidade (no-ops que delegam)
+    function loadFromStorage(key, fallback) {
+      return structuredClone(fallback);
+    }
+    function saveToStorage(key, value) {
+      // delegado para persistAll -> Supabase
     }
 
     const state = {
@@ -478,8 +565,8 @@
         profile: 'Todos os perfis',
         search: '',
       },
-      leads: loadFromStorage(STORAGE_KEYS.LEADS, DEFAULT_LEADS),
-      config: loadFromStorage(STORAGE_KEYS.CONFIG, DEFAULT_SITE_CONFIG),
+      leads: [],
+      config: structuredClone(DEFAULT_SITE_CONFIG),
     };
 
     /* ==========================================================================
@@ -535,11 +622,11 @@
     }
 
     let saveTimer = null;
-    function persistAll(silent = false) {
+    async function persistAll(silent = false) {
       state.saveStatus = 'Salvando...';
       updateSaveIndicator();
-      saveToStorage(STORAGE_KEYS.LEADS, state.leads);
-      saveToStorage(STORAGE_KEYS.CONFIG, state.config);
+      await saveLeadsToSupabase(state.leads);
+      await saveConfigToSupabase(state.config);
       applyThemeTokens();
 
       clearTimeout(saveTimer);
@@ -716,6 +803,9 @@
         confirmLabel: 'Excluir Lead',
         danger: true,
         onConfirm: () => {
+          if (String(leadId).match(/^[0-9a-f-]{36}$/)) {
+            fetch(SUPA_URL + '/rest/v1/leads?id=eq.' + leadId, { method: 'DELETE', headers: SUPA_HEADERS }).catch(e => console.error('Erro ao excluir lead no Supabase:', e));
+          }
           state.leads = state.leads.filter((l) => l.id !== leadId);
           persistAll();
           renderApp();
@@ -2444,8 +2534,16 @@
       }
     }
 
-    // Inicialização
-    window.addEventListener('DOMContentLoaded', () => {
+    // Inicialização: carrega dados do Supabase antes de renderizar
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const [leads, config] = await Promise.all([loadLeadsFromSupabase(), loadConfigFromSupabase()]);
+        state.leads = leads;
+        state.config = config;
+        applyThemeTokens();
+      } catch (e) {
+        console.error('Falha ao carregar do Supabase:', e);
+      }
       renderApp();
     });
   </script>
